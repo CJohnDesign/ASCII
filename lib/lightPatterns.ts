@@ -68,7 +68,216 @@ export const generateDotField = (
   return grid;
 };
 
-// Pattern 1b: Dot Field 2 - geometric tessellation with algorithmic flow
+// Pattern 1b: Voice 1 - Soft Waves pattern (audio-responsive version)
+export const generateVoice1 = (
+  cols: number,
+  rows: number,
+  frame: number,
+  audioData?: { volume: number; frequencyData: number[] }
+): string[][] => {
+  const grid = createGrid(cols, rows);
+  const frequency = 0.08;
+  const amplitude = 2;
+  
+  // Audio-responsive parameters
+  const volume = audioData?.volume || 0;
+  
+  // Animation speed - very slow until there's sound, then speeds up with audio
+  const baseSpeed = 0.002; // Very slow base speed
+  const maxSpeed = 0.02; // Normal speed when audio is present
+  const animationSpeed = baseSpeed + (volume * (maxSpeed - baseSpeed));
+  
+  // Use frame for vertical pulsing - speed controlled by audio
+  const verticalPulse = Math.sin(frame * animationSpeed) * 0.5;
+  
+  // Audio-enhanced wave animation - waves pulse more with audio
+  const audioWaveBoost = 1 + volume * 0.5; // Boost for more contrast
+  
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      // Remove frame from horizontal position - waves stay in place
+      const wave1 = Math.sin(col * frequency);
+      const wave2 = Math.sin((col * frequency * 1.5) + Math.PI / 3);
+      const combined = (wave1 + wave2) / 2;
+      
+      // Apply vertical pulse for gentle breathing effect
+      const distFromCenter = Math.abs(row - (rows / 2 + combined * amplitude + verticalPulse));
+      
+      if (distFromCenter < 1.5) {
+        let intensity = 1 - (distFromCenter / 1.5);
+        
+        // Boost intensity with audio
+        intensity *= audioWaveBoost;
+        intensity = Math.min(1, intensity);
+        
+        if (intensity > 0.25) {
+          // Original Soft Waves character gradient - no square characters
+          const charIndex = Math.floor(intensity * 6);
+          const chars = ['·', '•', '◦', '○', '●', '░'];
+          grid[row][col] = chars[charIndex] || '·';
+        }
+      }
+    }
+  }
+  
+  return grid;
+};
+
+// Pattern 1c: Voice 2 - Dot Field pattern (audio-responsive version)
+export const generateVoice2 = (
+  cols: number,
+  rows: number,
+  frame: number,
+  audioData?: { volume: number; frequencyData: number[] }
+): string[][] => {
+  const grid = createGrid(cols, rows);
+  const baseDensity = 0.05; // Increased density for more coverage
+  
+  // Audio-responsive parameters
+  const volume = audioData?.volume || 0;
+  
+  // Animation speed - very slow until there's sound, then speeds up with audio
+  const baseSpeed = 0.002; // Very slow base speed
+  const maxSpeed = 0.05; // Normal speed when audio is present
+  const animationSpeed = baseSpeed + (volume * (maxSpeed - baseSpeed));
+  
+  // Faster breathing effect - speed controlled by audio
+  const breath = Math.sin(frame * animationSpeed * 80) * 0.15 + 0.85; // Adjusted multiplier for slower animation
+  const density = baseDensity * breath;
+  
+  // Audio-enhanced density - more dots appear with sound
+  const audioDensityBoost = 1 + volume * 0.4;
+  const finalDensity = density * audioDensityBoost;
+  
+  // Use hash-based distribution with spiral/Voronoi-like clustering
+  const cellSize = 3.5;
+  const verticalPulse = Math.sin(frame * animationSpeed * 10) * 0.2; // Slower pulse
+  
+  // Identify dark pixel positions (selected pixels that become dark with audio)
+  const darkPixelPositions: Array<{x: number, y: number}> = [];
+  const darkPixelCellSize = cellSize * 4; // Larger cells for dark pixels
+  
+  if (volume > 0.05) {
+    // Select some pixels to become dark based on audio
+    const numDarkPixels = Math.floor(volume * 20); // Up to 20 dark pixels at max volume
+    
+    for (let i = 0; i < numDarkPixels; i++) {
+      // Use hash to determine consistent dark pixel positions
+      const hash = ((i * 137 + Math.floor(frame * 0.1)) * 211) % 10000;
+      const x = (hash % cols);
+      const y = Math.floor((hash / cols) % rows);
+      
+      // Add some variation but keep positions relatively stable
+      const cellX = Math.floor(x / darkPixelCellSize);
+      const cellY = Math.floor(y / darkPixelCellSize);
+      const cellHash = ((cellX * 137 + cellY * 193) % 100) / 100;
+      
+      if (cellHash < volume * 0.8) { // Only show dark pixels when volume is high enough
+        darkPixelPositions.push({
+          x: cellX * darkPixelCellSize + darkPixelCellSize / 2,
+          y: cellY * darkPixelCellSize + darkPixelCellSize / 2
+        });
+      }
+    }
+  }
+  
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      // Grid-based cells with hash variation
+      const cellRow = Math.floor((row + verticalPulse) / cellSize);
+      const cellCol = Math.floor(col / cellSize);
+      
+      // Create hash from cell position for consistent distribution
+      const hash1 = ((cellCol * 137 + cellRow * 193) % 100) / 100;
+      const hash2 = ((cellCol * 211 + cellRow * 157) % 100) / 100;
+      const hash3 = ((cellCol * 307 + cellRow * 271) % 100) / 100;
+      
+      // Position within cell for smooth transitions
+      const localRow = ((row + verticalPulse) % cellSize) / cellSize;
+      const localCol = (col % cellSize) / cellSize;
+      const distFromCenter = Math.sqrt(
+        Math.pow(localRow - 0.5, 2) + Math.pow(localCol - 0.5, 2)
+      );
+      
+      // Fade towards edges of cell for smooth clusters
+      const fade = 1 - (distFromCenter * 1.4);
+      const cellIntensity = (hash1 + hash2 + hash3) / 3;
+      
+      // Combine cell intensity with fade
+      let finalIntensity = cellIntensity * Math.max(0, fade);
+      
+      // Boost intensity with audio
+      finalIntensity *= audioDensityBoost;
+      finalIntensity = Math.min(1, finalIntensity);
+      
+      // Calculate outward motion from dark pixels
+      let darkPixelInfluence = 0;
+      let isDarkPixel = false;
+      
+      if (darkPixelPositions.length > 0) {
+        let minDist = Infinity;
+        
+        for (const darkPos of darkPixelPositions) {
+          const dx = col - darkPos.x;
+          const dy = row - darkPos.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          if (dist < minDist) {
+            minDist = dist;
+          }
+          
+          // Check if this is the dark pixel itself
+          if (dist < 1.5) {
+            isDarkPixel = true;
+          }
+        }
+        
+        // Create outward motion waves from dark pixels
+        const waveRadius = 8 + volume * 15; // Wave extends outward based on volume
+        if (minDist < waveRadius) {
+          // Create wave pattern radiating outward
+          const wavePhase = (frame * animationSpeed * 20) - minDist * 0.5;
+          const wave = Math.sin(wavePhase) * 0.5 + 0.5;
+          
+          // Fade with distance
+          const distanceFade = 1 - (minDist / waveRadius);
+          darkPixelInfluence = wave * distanceFade * volume * 0.6;
+        }
+      }
+      
+      if (finalIntensity > finalDensity || isDarkPixel || darkPixelInfluence > 0.1) {
+        // Map intensity to character gradient
+        const normalized = (finalIntensity - finalDensity) / (1 - finalDensity);
+        
+        // Use the same light character set throughout
+        const chars = ['·', '•', '◦', '-', '○', '░'];
+        
+        // Calculate base character index
+        let charIndex = Math.floor(normalized * chars.length);
+        
+        // Apply dark pixel influence
+        if (isDarkPixel && volume > 0.05) {
+          // Dark pixel itself - use darkest character
+          charIndex = chars.length - 1; // '░'
+        } else if (darkPixelInfluence > 0.1) {
+          // Near dark pixel - shift toward darker characters based on wave influence
+          const darkShift = Math.floor(darkPixelInfluence * (chars.length - 1));
+          charIndex = Math.min(chars.length - 1, charIndex + darkShift);
+        } else if (volume > 0.05) {
+          // General audio - slight shift toward darker
+          const volumeShift = Math.min(chars.length - 1, volume * chars.length * 0.5);
+          charIndex = Math.min(chars.length - 1, charIndex + Math.floor(volumeShift));
+        }
+        
+        grid[row][col] = chars[charIndex] || '·';
+      }
+    }
+  }
+  
+  return grid;
+};
+
+// Pattern 1d: Dot Field 2 - geometric tessellation with algorithmic flow
 export const generateDotField2 = (
   cols: number,
   rows: number,
@@ -169,7 +378,7 @@ export const generateDotField2 = (
   return grid;
 };
 
-// Pattern 1c: Digital Fog - geometric tessellation with algorithmic flow
+// Pattern 1d: Digital Fog - geometric tessellation with algorithmic flow
 export const generateDigitalFog = (
   cols: number,
   rows: number,
@@ -259,7 +468,7 @@ export const generateDigitalFog = (
   return grid;
 };
 
-// Pattern 1d: Digital Fog 2 - simple electrons flowing through abstract circuit board
+// Pattern 1e: Digital Fog 2 - simple electrons flowing through abstract circuit board
 export const generateDigitalFog2 = (
   cols: number,
   rows: number,
@@ -317,7 +526,351 @@ export const generateDigitalFog2 = (
   return grid;
 };
 
-// Pattern 1f: HealthCode360 - elegant Matrix-inspired cascading code with mathematical harmony
+// Pattern 1f: Voice 3 - Digital Fog 2 pattern (volume-responsive speed only)
+export const generateVoice3 = (
+  cols: number,
+  rows: number,
+  frame: number,
+  audioData?: { volume: number; frequencyData: number[]; peakVolume?: number }
+): string[][] => {
+  const grid = createGrid(cols, rows);
+  
+  // Audio-responsive parameters - using peak volume to ensure forward-only motion
+  const volume = audioData?.volume || 0;
+  const peakVolume = audioData?.peakVolume || volume;
+  
+  // Ease-in-out cubic for ultra-smooth transitions
+  const easeInOutCubic = (t: number): number => {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  };
+  
+  // Use peak volume for speed to ensure motion never reverses
+  // Peak volume increases immediately with volume, decays slowly when volume drops
+  // This ensures speed always increases or stays the same, never decreases suddenly
+  // No easing on peak volume to prevent speed jumps that could cause wave reversal
+  const smoothedPeakVolume = Math.min(1, peakVolume * 1.2);
+  
+  // Animation speed - baseline speed that never goes below, increases with peak volume
+  const baselineSpeed = 0.01; // Standard rate - never goes below this
+  const maxSpeed = 0.05; // Maximum speed when volume is high
+  const animationSpeed = baselineSpeed + (smoothedPeakVolume * (maxSpeed - baselineSpeed));
+  
+  // Cumulative phase - always increases monotonically
+  // Using frame * speed ensures position always increases
+  // Using peak volume ensures speed never decreases below previous peak
+  const forwardPhase = frame * animationSpeed;
+  const cellSize = 3;
+  
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      // Simple hash-based distribution with more randomness
+      const cellRow = Math.floor(row / cellSize);
+      const cellCol = Math.floor(col / cellSize);
+      const cellId = cellRow * 1000 + cellCol;
+      
+      // More random hash variations with frame-based variation
+      const hash1 = ((cellId * 137 + Math.floor(frame * 0.1)) % 1000) / 1000;
+      const hash2 = ((cellId * 211 + Math.floor(frame * 0.15)) % 1000) / 1000;
+      const hash3 = ((cellId * 307 + Math.floor(frame * 0.12)) % 1000) / 1000;
+      const hash4 = ((cellId * 401 + Math.floor(frame * 0.08)) % 1000) / 1000; // Additional randomness
+      
+      // Add random variation to wave phase
+      const randomPhase = hash4 * 0.3; // Random phase offset
+      const wave = Math.sin((col * 0.05 + row * 0.03 + forwardPhase + randomPhase)) * 0.5 + 0.5;
+      
+      // More varied intensity calculation
+      const baseIntensity = (hash1 + hash2 + hash3) / 3;
+      
+      // Add random variation to intensity
+      const randomVariation = (hash4 - 0.5) * 0.2; // ±0.1 variation
+      const intensity = (baseIntensity + randomVariation) * wave;
+      
+      // More random rarity hash
+      const rarityHash = ((cellId * 149 + Math.floor(frame * 0.05)) % 1000) / 1000;
+      const rarityVariation = ((cellId * 271 + Math.floor(frame * 0.07)) % 100) / 100;
+      
+      // Adjusted thresholds with randomness
+      const threshold1 = 0.4 + (rarityVariation - 0.5) * 0.05;
+      const threshold2 = 0.3 + (rarityVariation - 0.5) * 0.05;
+      const threshold3 = 0.15 + (rarityVariation - 0.5) * 0.03;
+      
+      if (intensity > threshold1 && rarityHash > 0.92) {
+        // Rare large symbols - more random selection
+        const symbolHash = ((cellId * 173 + Math.floor(frame * 0.1)) % 100) / 100;
+        if (symbolHash > 0.5) {
+          grid[row][col] = '○';
+        } else {
+          grid[row][col] = '+';
+        }
+      } else if (intensity > threshold2 && rarityHash > 0.85) {
+        // Occasional medium symbols - more random
+        const symbolHash = ((cellId * 191 + Math.floor(frame * 0.08)) % 100) / 100;
+        if (symbolHash > 0.5) {
+          grid[row][col] = '•';
+        } else {
+          grid[row][col] = '◦';
+        }
+      } else if (intensity > threshold3) {
+        // Mostly small dots - majority of the pattern
+        grid[row][col] = '·';
+      }
+    }
+  }
+  
+  return grid;
+};
+
+// Pattern 1g: Voice 4 - Digital Fog pattern with center-focused fog and volume-responsive motion
+export const generateVoice4 = (
+  cols: number,
+  rows: number,
+  frame: number,
+  audioData?: { volume: number; frequencyData: number[]; peakVolume?: number }
+): string[][] => {
+  const grid = createGrid(cols, rows);
+  const baseDensity = 0.03; // Lower threshold for more density
+  
+  // Audio-responsive parameters - using peak volume for monotonic motion
+  const volume = audioData?.volume || 0;
+  const peakVolume = audioData?.peakVolume || volume;
+  
+  // Use peak volume for formation speed to ensure motion never reverses
+  // Peak volume increases immediately with volume, decays slowly when volume drops
+  const smoothedPeakVolume = Math.min(1, peakVolume * 1.2);
+  
+  // Animation speed - baseline speed that never goes below, increases with peak volume
+  const baselineSpeed = 0.02; // Standard rate - never goes below this
+  const maxSpeed = 0.06; // Maximum speed when volume is high
+  const formationSpeed = frame * (baselineSpeed + (smoothedPeakVolume * (maxSpeed - baselineSpeed)));
+  
+  // Slow, elegant breathing (reduced effect to let audio control motion)
+  const breath = Math.sin(frame * 0.02) * 0.05 + 0.95; // Reduced amplitude
+  const density = baseDensity * breath;
+  
+  // Geometric tessellation with hexagonal-like patterns - smaller tiles for more shapes
+  const tileSize = 2.5; // Reduced from 5 to create smaller, more numerous hex cells
+  const centerX = cols / 2;
+  const centerY = rows / 2;
+  
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      // Calculate distance from center - use non-circular, organic shape
+      // Different scaling for x/y to create gelatinous, non-circular fog
+      const dx = (col - centerX) / (cols * 0.4); // Tighter horizontal
+      const dy = (row - centerY) / (rows * 0.35); // Tighter vertical, slightly different
+      const organicDist = Math.sqrt(dx * dx + dy * dy * 1.1); // Slight asymmetry for organic shape
+      
+      // Much tighter, steeper falloff using power function for gelatinous fog
+      // Power function creates tighter center with organic falloff
+      const normalizedDist = Math.min(1, organicDist);
+      const radialFade = 1 - Math.pow(normalizedDist, 1.8); // Power function for organic shape
+      const radialFadeSmooth = Math.max(0.15, radialFade); // Keep some visibility at edges
+      
+      // Volume-based intensity boost in center - makes fog pattern more reactive
+      // Use same organic shape for volume boost
+      const volumeBoost = volume * (1 - Math.pow(normalizedDist, 1.8));
+      const volumeBoostSmooth = Math.max(0, volumeBoost);
+      
+      // Hexagonal grid coordinates
+      const hexX = col / tileSize;
+      const hexY = row / tileSize;
+      
+      // Hexagonal grid coordinates
+      const q = (2/3 * hexX);
+      const r = (-1/3 * hexX + Math.sqrt(3)/3 * hexY);
+      const s = -q - r;
+      
+      // Round to nearest hex center
+      const qr = Math.round(q);
+      const rr = Math.round(r);
+      const sr = Math.round(s);
+      
+      const qd = Math.abs(qr - q);
+      const rd = Math.abs(rr - r);
+      const sd = Math.abs(sr - s);
+      
+      // Distance from hex center
+      const hexDist = Math.max(qd, rd, sd);
+      
+      // Create unique ID for each hex cell
+      const hexId = qr * 1000 + rr * 100 + sr;
+      
+      // Hash-based pattern for each hex
+      const hexHash = ((hexId * 137) % 1000) / 1000;
+      const hexHash2 = ((hexId * 211) % 1000) / 1000;
+      const hexHash3 = ((hexId * 307) % 1000) / 1000;
+      
+      // Traveling formation patterns - speed controlled by peak volume (monotonic)
+      const formation1 = Math.sin((qr + rr) * 0.3 + formationSpeed) * 0.5 + 0.5;
+      const formation2 = Math.sin((qr - sr) * 0.25 + formationSpeed * 0.7) * 0.5 + 0.5;
+      const formation3 = Math.sin((rr + sr) * 0.2 + formationSpeed * 1.2) * 0.5 + 0.5;
+      
+      // Combine formations
+      const formation = (formation1 + formation2 + formation3) / 3;
+      
+      // Hex cell intensity based on position and formation
+      const hexIntensity = (hexHash + hexHash2 + hexHash3) / 3;
+      
+      // Softer fade from hex center - smaller radius for tighter shapes
+      const hexFade = 1 - (hexDist * 1.5); // Tighter fade for smaller shapes
+      const hexFadeSmooth = Math.max(0, hexFade);
+      
+      // Combine all factors - add radial fade from center and volume boost for reactive fog
+      // Volume boost makes the existing pattern more intense/dense in center when volume is high
+      const baseIntensity = hexIntensity * hexFadeSmooth * formation * radialFadeSmooth;
+      const finalIntensity = baseIntensity + (volumeBoostSmooth * 0.4); // Boost intensity in center with volume
+      
+      // Lower threshold for more density - show more pixels
+      if (finalIntensity > density) {
+        // Map intensity to character gradient
+        const normalized = (finalIntensity - density) / (1 - density);
+        
+        // Use volume to shift toward denser/darker characters in center
+        // When volume is high, use denser characters (+, ×, ●, *) which appear darker
+        const volumeWeight = volumeBoostSmooth * 0.6; // Weight volume effect
+        const combinedIntensity = normalized + volumeWeight;
+        
+        // Extended character set with denser characters for darker appearance
+        const chars = ['·', '•', '◦', '-', '○', '*', '+', '×', '●'];
+        const charIndex = Math.min(8, Math.floor(combinedIntensity * 9));
+        grid[row][col] = chars[charIndex] || '·';
+      } else {
+        // Even for cells below threshold, add very light particles
+        const ambientIntensity = hexIntensity * 0.5 * radialFadeSmooth;
+        if (ambientIntensity > density * 0.2) {
+          // Use denser characters when volume is high, even for ambient
+          if (volumeBoostSmooth > 0.3) {
+            grid[row][col] = '*';
+          } else {
+            grid[row][col] = '·';
+          }
+        }
+      }
+    }
+  }
+  
+  return grid;
+};
+
+// Pattern 1h: Voice 5 - Single quasar in center that responds to audio
+export const generateVoice5 = (
+  cols: number,
+  rows: number,
+  frame: number,
+  audioData?: { volume: number; frequencyData: number[]; peakVolume?: number }
+): string[][] => {
+  const grid = createGrid(cols, rows);
+  
+  // Audio-responsive parameters
+  const volume = audioData?.volume || 0;
+  const peakVolume = audioData?.peakVolume || volume;
+  
+  // Multiple easing functions for ultra-smooth transitions
+  const easeInOutCubic = (t: number): number => {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  };
+  
+  const easeInOutQuint = (t: number): number => {
+    return t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
+  };
+  
+  const easeOutQuart = (t: number): number => {
+    return 1 - Math.pow(1 - t, 4);
+  };
+  
+  // Smooth peak volume with multiple easing layers for ultra-smooth transitions (for speed only)
+  const normalizedPeak = Math.min(1, peakVolume * 1.2);
+  const smoothedPeakVolume = easeInOutQuint(easeInOutCubic(normalizedPeak));
+  
+  // Smooth current volume with heavy easing for size - allows size to decrease smoothly
+  const normalizedVolume = Math.min(1, volume * 1.3);
+  // Apply smoother, more gradual easing for size transitions
+  // Use easeOutQuart for smoother expansion curve
+  const smoothedVolumeForSize = easeOutQuart(easeInOutCubic(normalizedVolume));
+  
+  // Sway speed - moderate speed for side-to-side motion (uses peak for monotonic motion)
+  const baselineSpeed = 0.01; // Moderate baseline
+  const maxSpeed = 0.02; // Moderate even at max volume
+  const swaySpeed = frame * (baselineSpeed + (smoothedPeakVolume * (maxSpeed - baselineSpeed)));
+  
+  // Single quasar in center
+  const baseCenterX = cols / 2;
+  const baseCenterY = rows / 2;
+  
+  // Side-to-side motion - gentle swaying using multiple eased sine waves
+  const sway1 = Math.sin(swaySpeed * 0.8) * 0.15; // Slow horizontal sway
+  const sway2 = Math.sin(swaySpeed * 0.5 + Math.PI / 3) * 0.08; // Slower, offset sway
+  const rawSway = (sway1 + sway2) / 2;
+  const easedSway = easeInOutCubic((rawSway + 1) / 2) * 2 - 1; // Apply easing to sway
+  
+  // Offset center position for side-to-side motion
+  const swayOffset = easedSway * (cols * 0.1); // Max 10% of screen width
+  const centerX = baseCenterX + swayOffset;
+  const centerY = baseCenterY;
+  
+  // Size - smoother, more gradual expansion with larger range
+  const baseSize = 0.35; // Steady minimum size
+  const maxSizeBoost = 0.45; // Larger maximum size range for smoother expansion
+  const quasarSize = baseSize + (smoothedVolumeForSize * maxSizeBoost); // Gradual size expansion
+  
+  const coreChars = ['●', '○', '◉'];
+  const haloChars = ['·', '•', '○'];
+  const faintChars = ['·', ' '];
+  
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const dx = col - centerX;
+      const dy = row - centerY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const maxDist = Math.min(cols, rows) * quasarSize;
+      
+      // Smooth, continuous pattern with subtle variation
+      const angle = Math.atan2(dy, dx);
+      const normalizedDist = dist / maxDist;
+      
+      // Very subtle wave pattern for organic feel - multiple eased waves
+      const wave1 = Math.sin(dist * 0.03 + swaySpeed * 0.3) * 0.08 + 0.92;
+      const wave2 = Math.sin(dist * 0.05 + swaySpeed * 0.5 + angle) * 0.05 + 0.95;
+      const wave3 = Math.sin(dist * 0.04 + swaySpeed * 0.4 + angle * 1.5) * 0.05 + 0.95;
+      
+      // Apply easing to each wave for ultra-smooth transitions
+      const easedWave1 = easeInOutCubic((wave1 - 0.92) / 0.08) * 0.08 + 0.92;
+      const easedWave2 = easeInOutCubic((wave2 - 0.95) / 0.05) * 0.05 + 0.95;
+      const easedWave3 = easeInOutCubic((wave3 - 0.95) / 0.05) * 0.05 + 0.95;
+      
+      // Combine eased waves for smooth, continuous flow
+      const flow = (easedWave1 + easedWave2 + easedWave3) / 3;
+      
+      // Base intensity from distance - smooth radial gradient that maintains gradient as size expands
+      // Use smoother gradient curve for gradual fade
+      const distanceFactor = Math.max(0, 1 - normalizedDist);
+      // Apply smoother easing for gradient - maintains gradient shape as size expands
+      const easedDistanceFactor = easeOutQuart(Math.pow(distanceFactor, 0.8)); // Softer gradient curve
+      const baseIntensity = flow * easedDistanceFactor;
+      
+      // Smooth volume boost - use smoothed volume for size-consistent transitions
+      const volumeBoost = smoothedVolumeForSize * easedDistanceFactor * 0.25; // Gradual boost
+      
+      const intensity = Math.min(1, baseIntensity + volumeBoost);
+      
+      // Place characters based on intensity
+      if (intensity > 0.5) {
+        grid[row][col] = coreChars[Math.floor(intensity * coreChars.length)] || '●';
+      } else if (intensity > 0.25) {
+        grid[row][col] = haloChars[Math.floor(intensity * haloChars.length)] || '•';
+      } else if (intensity > 0.1) {
+        const hash = ((col * 137) + (row * 193)) % 100;
+        if (hash > 85) {
+          grid[row][col] = faintChars[hash % faintChars.length] || '·';
+        }
+      }
+    }
+  }
+  
+  return grid;
+};
+
+// Pattern 1i: HealthCode360 - elegant Matrix-inspired cascading code with mathematical harmony
 export const generateHealthCode360 = (
   cols: number,
   rows: number,
@@ -454,7 +1007,7 @@ export const generateHealthCode360 = (
   return grid;
 };
 
-// Pattern 1e: Digital Fog 3 - elegant Matrix-inspired cascading code with mathematical harmony
+// Pattern 1h: Digital Fog 3 - elegant Matrix-inspired cascading code with mathematical harmony
 export const generateDigitalFog3 = (
   cols: number,
   rows: number,
