@@ -42,8 +42,8 @@ export const useAudio = (enabled: boolean) => {
       
       // Create data arrays
       const bufferLength = analyser.frequencyBinCount;
-      dataArrayRef.current = new Uint8Array(new ArrayBuffer(analyser.fftSize)); // Time domain needs fftSize length
-      frequencyArrayRef.current = new Uint8Array(new ArrayBuffer(bufferLength));
+      dataArrayRef.current = new Uint8Array(analyser.fftSize);
+      frequencyArrayRef.current = new Uint8Array(bufferLength);
       
       setIsAccessGranted(true);
       
@@ -88,7 +88,7 @@ export const useAudio = (enabled: boolean) => {
       }
       
       // Get time domain data for volume
-      analyserRef.current.getByteTimeDomainData(dataArrayRef.current);
+      analyserRef.current.getByteTimeDomainData(dataArrayRef.current as any);
       
       // Calculate volume (RMS)
       let sum = 0;
@@ -109,7 +109,7 @@ export const useAudio = (enabled: boolean) => {
       }
       
       // Get frequency data
-      analyserRef.current.getByteFrequencyData(frequencyArrayRef.current);
+      analyserRef.current.getByteFrequencyData(frequencyArrayRef.current as any);
       
       // Normalize frequency data to 0-1
       const frequencyData = Array.from(frequencyArrayRef.current).map(
