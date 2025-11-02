@@ -743,7 +743,6 @@ export const generateVoice4 = (
             grid[row][col] = '*';
           } else {
             grid[row][col] = '·';
-            
           }
         }
       }

@@ -42,8 +42,8 @@ export const useAudio = (enabled: boolean) => {
       
       // Create data arrays
       const bufferLength = analyser.frequencyBinCount;
-      dataArrayRef.current = new Uint8Array(bufferLength);
-      frequencyArrayRef.current = new Uint8Array(bufferLength);
+      dataArrayRef.current = new Uint8Array(new ArrayBuffer(analyser.fftSize)); // Time domain needs fftSize length
+      frequencyArrayRef.current = new Uint8Array(new ArrayBuffer(bufferLength));
       
       setIsAccessGranted(true);
       
