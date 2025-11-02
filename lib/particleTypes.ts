@@ -39,13 +39,13 @@ export const createParticle = (
   const angle = getDirectionAngle(direction);
   const velocity = speed * (0.5 + Math.random() * 0.5);
   
-  const chars = theme.particles.characterSet + theme.particles.symbols;
+  const chars = theme.characters.blocks + theme.characters.symbols;
   const char = chars[Math.floor(Math.random() * chars.length)];
   
   const colors = [
-    theme.colors.particle.bright,
-    theme.colors.particle.medium,
-    theme.colors.particle.dim,
+    theme.colors.char.bright,
+    theme.colors.char.medium,
+    theme.colors.char.dim,
   ];
   const color = colors[Math.floor(Math.random() * colors.length)];
   
@@ -56,8 +56,7 @@ export const createParticle = (
     vy: Math.sin(angle) * velocity,
     char,
     opacity: 0,
-    targetOpacity: theme.particles.minOpacity + 
-      Math.random() * (theme.particles.maxOpacity - theme.particles.minOpacity),
+    targetOpacity: 0.3 + Math.random() * 0.7,
     size: 0.8 + Math.random() * 0.4,
     color,
     trail: [],

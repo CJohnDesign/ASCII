@@ -142,8 +142,8 @@ export const ASCIIGrid: React.FC<ASCIIGridProps> = ({ width, height }) => {
           // Interweaving colors - alternate between green and cyan based on column
           const colorIndex = Math.floor(col / 3) % 2;
           const baseColor = colorIndex === 0
-            ? theme.colors.particle.bright 
-            : theme.colors.particle.medium;
+            ? theme.colors.char.bright 
+            : theme.colors.char.medium;
 
           const r = parseInt(baseColor.slice(1, 3), 16);
           const g = parseInt(baseColor.slice(3, 5), 16);

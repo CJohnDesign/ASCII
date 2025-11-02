@@ -3,7 +3,7 @@
  * Creates flowing data stream patterns with subtle medical context
  */
 
-import { ParticleStream } from './particleTypes';
+import { ParticleStream, Particle } from './particleTypes';
 
 export interface StreamConfig {
   count: number;
