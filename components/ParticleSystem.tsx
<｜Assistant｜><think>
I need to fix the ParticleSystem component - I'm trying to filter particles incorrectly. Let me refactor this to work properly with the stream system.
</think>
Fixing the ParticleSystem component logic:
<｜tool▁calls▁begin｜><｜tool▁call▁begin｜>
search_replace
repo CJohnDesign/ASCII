@@ -1,0 +1,94 @@
+'use client';
+
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Particle, ParticleStream, createParticle, updateParticle, isParticleAlive } from '../lib/particleTypes';
+import { generateDataStreams, spawnParticlesForStream } from '../lib/dataStreamGenerator';
+import { ASCIIRenderer } from './ASCIIRenderer';
+
+interface ParticleSystemProps {
+  width: number;
+  height: number;
+}
+
+export const ParticleSystem: React.FC<ParticleSystemProps> = ({ width, height }) => {
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const streamsRef = useRef<ParticleStream[]>([]);
+  const frameCountRef = useRef(0);
+  const lastTimeRef = useRef<number>(0);
+
+  // Initialize streams
+  useEffect(() => {
+    streamsRef.current = generateDataStreams(width, height);
+  }, [width, height]);
+
+  // Main animation loop
+  useEffect(() => {
+    if (width === 0 || height === 0) return;
+
+    const animate = (currentTime: number) => {
+      const deltaTime = Math.min((currentTime - lastTimeRef.current) / 16.67, 2); // Cap at 2x normal speed
+      lastTimeRef.current = currentTime;
+
+      // Update frame count for spawning
+      frameCountRef.current += 1;
+
+      // Spawn new particles for each stream
+      streamsRef.current.forEach((stream) => {
+        spawnParticlesForStream(stream, width, height, frameCountRef.current);
+      });
+
+      // Update all particles
+      setParticles((prevParticles) => {
+        const updatedParticles: Particle[] = [];
+        const allStreamParticles: Particle[] = [];
+
+        // Process particles from each stream
+        streamsRef.current.forEach((stream) => {
+          stream.particles.forEach((particle) => {
+            if (particle.age === 0) {
+              // Initialize particle properly
+              const newParticle = createParticle(
+                particle.x,
+                particle.y,
+                stream.direction,
+                stream.speed
+              );
+              newParticle.color = stream.color || newParticle.color;
+              allStreamParticles.push(newParticle);
+            } else {
+              const updated = updateParticle(particle, width, height, deltaTime);
+              if (isParticleAlive(updated)) {
+                allStreamParticles.push(updated);
+              }
+            }
+          });
+          stream.particles = allStreamParticles.filter((p) =>
+            streamsRef.current.find((s) => s.particles.includes(p))
+          );
+        });
+
+        // Update existing particles
+        prevParticles.forEach((particle) => {
+          const updated = updateParticle(particle, width, height, deltaTime);
+          if (isParticleAlive(updated)) {
+            updatedParticles.push(updated);
+          }
+        });
+
+        // Combine updated particles with new stream particles
+        const combined = [...updatedParticles, ...allStreamParticles];
+        
+        // Limit total particle count for performance
+        return combined.slice(0, 2000);
+      });
+
+      requestAnimationFrame(animate);
+    };
+
+    const animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationId);
+  }, [width, height]);
+
+  return <ASCIIRenderer particles={particles} width={width} height={height} />;
+};
+
